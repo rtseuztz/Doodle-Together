@@ -33,7 +33,7 @@ func main() {
 		hub := newHub()
 		go hub.run()
 		router.GET("/", serveHome) //.HandleFunc("/", serveHome)
-		router.GET("/ws", func(c *gin.Context) {
+		router.GET("/wss", func(c *gin.Context) {
 			serveWs(hub, c.Writer, c.Request)
 		})
 
@@ -47,7 +47,7 @@ func main() {
 	hub := newHub()
 	go hub.run()
 	router.GET("/", serveHome) //.HandleFunc("/", serveHome)
-	router.GET("/ws", func(c *gin.Context) {
+	router.GET("/wss", func(c *gin.Context) {
 		serveWs(hub, c.Writer, c.Request)
 	})
 

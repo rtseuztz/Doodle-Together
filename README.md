@@ -1,7 +1,11 @@
 
-# Draw Together! based on: go-getting-started
+# Draw Together! 
 Draw together with friends!
-
+Sources: 
+  go-getting-started - Heroku's tutorial
+  https://github.com/gorilla/websocket/tree/master/examples/chat
+  https://dev.to/javascriptacademy/create-a-drawing-app-using-javascript-and-canvas-2an1
+  
 This application supports the [Getting Started with Go on Heroku](https://devcenter.heroku.com/articles/getting-started-with-go) article - check it out.
 
 ## Running Locally

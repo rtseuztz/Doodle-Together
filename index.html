@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Doodle</title>
+
+<style type="text/css">
+html {
+    overflow: hidden;
+}
+
+body {
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: gray;
+}
+
+#log {
+    background: white;
+    margin: 0;
+    padding: 0.5em 0.5em 0.5em 0.5em;
+    position: relative;
+    height: 29em;
+    top: 0.5em;
+    left: 0.5em;
+    right: 0.5em;
+    bottom: 3em;
+    overflow: auto;
+}
+
+#form {
+    padding: 0 0.5em 0 0.5em;
+    margin: 0;
+    position: absolute;
+    bottom: 1em;
+    left: 0px;
+    width: 100%;
+    overflow: hidden;
+}
+.container {
+    height: 100%;
+    display: flex;
+}
+#toolbar {
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+    width: 70px;
+    background-color: #202020;
+}
+
+#toolbar * {
+    margin-bottom: 6px;
+}
+
+#toolbar label {
+    font-size: 12px;
+}
+
+#toolbar input {
+    width: 100%;
+}
+
+#toolbar button {
+    background-color: #1565c0;
+    border: none;
+    border-radius: 4px;
+    color:white;
+    padding: 2px;
+}
+
+</style>
+</head>
+<body>
+<section class="container">
+    <div id="toolbar">
+            <h1>Draw.</h1>
+            <label for="stroke">Stroke</label>
+            <input id="stroke" name='stroke' type="color">
+            <label for="lineWidth">Line Width</label>
+            <input id="lineWidth" name='lineWidth' type="number" value="5">
+            <button id="clear">Clear</button>
+        </div>
+        <div>
+            <canvas id="drawing-board"></canvas>
+        </div>
+</section>
+<div id="log"></div>
+<form id="form">
+    <input type="submit" value="Send" />
+    <input type="text" id="msg" size="64" autofocus />
+</form>
+</body>
+<script type="text/javascript">
+window.onload = function () {
+    var conn;
+    var msg = document.getElementById("msg");
+    var log = document.getElementById("log");
+
+    function appendLog(item) {
+        var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+        log.appendChild(item);
+        if (doScroll) {
+            log.scrollTop = log.scrollHeight - log.clientHeight;
+        }
+    }
+
+    document.getElementById("form").onsubmit = function () {
+        if (!conn) {
+            return false;
+        }
+        if (!msg.value) {
+            return false;
+        }
+        conn.send(msg.value);
+        msg.value = "";
+        return false;
+    };
+
+    if (window["WebSocket"]) {
+        conn = new WebSocket("ws://" + document.location.host + "/ws");
+        conn.onclose = function (evt) {
+            var item = document.createElement("div");
+            item.innerHTML = "<b>Connection closed.</b>";
+            appendLog(item);
+        };
+        conn.onmessage = function (evt) {
+            var data = evt.data.split('|');
+            externalDraw(data);
+            // for (var i = 0; i < messages.length; i++) {
+            //     var item = document.createElement("div");
+            //     item.innerText = messages[i];
+            //     appendLog(item);
+            // }
+        };
+    } else {
+        var item = document.createElement("div");
+        item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+        appendLog(item);
+    }
+    const canvas = document.getElementById('drawing-board');
+    const toolbar = document.getElementById('toolbar');
+    const ctx = canvas.getContext('2d');
+
+    const canvasOffsetX = canvas.offsetLeft;
+    const canvasOffsetY = canvas.offsetTop;
+
+    canvas.width = window.innerWidth - canvasOffsetX;
+    canvas.height = window.innerHeight - canvasOffsetY;
+
+    let isPainting = false;
+    let lineWidth = 5;
+    let startX;
+    let startY;
+    let lastXPos;
+    let lastYPos;
+
+    toolbar.addEventListener('click', e => {
+        if (e.target.id === 'clear') {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    });
+
+    toolbar.addEventListener('change', e => {
+        if(e.target.id === 'stroke') {
+            ctx.strokeStyle = e.target.value;
+        }
+
+        if(e.target.id === 'lineWidth') {
+            lineWidth = e.target.value;
+        }
+        
+    });
+
+    const draw = (e) => {
+        if(!isPainting) {
+            return;
+        }
+        if (!conn) {
+            return false;
+        }
+        conn.send(e.clientX - canvasOffsetX + "|" + e.clientY);
+        //ctx.lineWidth = lineWidth;
+        //ctx.lineCap = 'round';
+        //send over the things to web socket
+
+        //ctx.lineTo(e.clientX - canvasOffsetX, e.clientY);
+        //ctx.stroke();
+    }
+    const externalDraw = (data) => {
+        ctx.moveTo(data[0]-1,data[1]-1);
+        ctx.lineTo(data[0], data[1]);
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        //ctx.beginPath();
+        //ctx.lineTo(startX, startY);
+
+    }
+    canvas.addEventListener('mousedown', (e) => {
+        isPainting = true;
+        startX = e.clientX;
+        startY = e.clientY;
+    });
+
+
+    canvas.addEventListener('mouseup', e => {
+        isPainting = false;
+        ctx.stroke();
+        ctx.beginPath();
+    });
+
+    canvas.addEventListener('mousemove', draw);
+
+    canvas.addEventListener('touchstart', e => {
+        mousePos = getTouchPos(canvas, e);
+        var touch = e.touches[0];
+        var mouseEvent = new MouseEvent("mousedown", {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+    canvas.dispatchEvent(mouseEvent);
+    })
+    canvas.addEventListener('touchend', e => {
+        var mouseEvent = new MouseEvent("mouseup", {});
+        canvas.dispatchEvent(mouseEvent);
+    });
+    canvas.addEventListener('touchmove', e => {
+        var touch = e.touches[0];
+        var mouseEvent = new MouseEvent("mousemove", {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+    canvas.dispatchEvent(mouseEvent);
+    });
+    function getTouchPos(canvasDom, touchEvent) {
+    var rect = canvasDom.getBoundingClientRect();
+    return {
+        x: touchEvent.touches[0].clientX - rect.left,
+        y: touchEvent.touches[0].clientY - rect.top
+    };
+    }
+}
+</script>
+</html>

@@ -44,9 +44,11 @@ func main() {
 	router.Use(gin.Logger())
 	router.LoadHTMLGlob("templates/*.tmpl.html")
 	router.Static("/static", "static")
-
-	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl.html", nil)
+	hub := newHub()
+	go hub.run()
+	router.GET("/", serveHome) //.HandleFunc("/", serveHome)
+	router.GET("/ws", func(c *gin.Context) {
+		serveWs(hub, c.Writer, c.Request)
 	})
 
 	router.Run(":" + port)
